@@ -19,36 +19,69 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
   const [compassPosition, setCompassPosition] = useState(0);
   const [targetZone, setTargetZone] = useState({ start: 0, end: 20 });
   const [isMoving, setIsMoving] = useState(true);
-  const [direction, setDirection] = useState(1); // 1 for right, -1 for left
+  
+  // Use refs to track animation state
   const animationRef = useRef<number>();
+  const positionRef = useRef(0);
+  const directionRef = useRef(1);
+  const lastTimeRef = useRef(0);
 
   useEffect(() => {
     // Generate random target zone (20% of compass width)
     const start = Math.random() * 80; // 0-80% so the 20% zone fits
     setTargetZone({ start, end: start + 20 });
+    
+    // Reset position and direction
+    positionRef.current = 0;
+    directionRef.current = 1;
+    setCompassPosition(0);
   }, [enemy]);
 
   useEffect(() => {
-    if (!isMoving) return;
+    if (!isMoving) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      return;
+    }
 
-    const animate = () => {
-      setCompassPosition(prev => {
-        let newPosition = prev + (direction * 1.5); // Speed of movement
-        
-        // Bounce off the edges
-        if (newPosition >= 100) {
-          newPosition = 100;
-          setDirection(-1);
-        } else if (newPosition <= 0) {
-          newPosition = 0;
-          setDirection(1);
-        }
-        
-        return newPosition;
-      });
-      animationRef.current = requestAnimationFrame(animate);
+    const animate = (currentTime: number) => {
+      // Initialize lastTime on first frame
+      if (lastTimeRef.current === 0) {
+        lastTimeRef.current = currentTime;
+      }
+
+      // Calculate delta time for consistent movement speed
+      const deltaTime = currentTime - lastTimeRef.current;
+      lastTimeRef.current = currentTime;
+
+      // Move at consistent speed regardless of framerate (60 FPS baseline)
+      const speed = 0.08; // Adjust this value to change speed
+      const movement = speed * (deltaTime / 16.67); // 16.67ms = 60 FPS
+
+      // Update position
+      positionRef.current += directionRef.current * movement;
+      
+      // Bounce off the edges
+      if (positionRef.current >= 100) {
+        positionRef.current = 100;
+        directionRef.current = -1;
+      } else if (positionRef.current <= 0) {
+        positionRef.current = 0;
+        directionRef.current = 1;
+      }
+      
+      // Update state
+      setCompassPosition(positionRef.current);
+      
+      // Continue animation if still moving
+      if (isMoving) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
     };
 
+    // Reset lastTime when starting animation
+    lastTimeRef.current = 0;
     animationRef.current = requestAnimationFrame(animate);
 
     return () => {
@@ -56,7 +89,7 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isMoving, direction]);
+  }, [isMoving]);
 
   const handleAttack = () => {
     if (isAttacking) return;
@@ -65,15 +98,21 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
     setIsMoving(false);
 
     // Check if attack hits (player position is within target zone)
-    const hit = compassPosition >= targetZone.start && compassPosition <= targetZone.end;
+    const hit = positionRef.current >= targetZone.start && positionRef.current <= targetZone.end;
     
     setTimeout(() => {
       onAttack(hit);
       setIsAttacking(false);
-      setIsMoving(true);
+      
       // Generate new target zone for next attack
       const start = Math.random() * 80;
       setTargetZone({ start, end: start + 20 });
+      
+      // Reset position and restart movement
+      positionRef.current = 0;
+      directionRef.current = 1;
+      setCompassPosition(0);
+      setIsMoving(true);
     }, 500);
   };
 
@@ -148,24 +187,28 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
             }}
           />
           
-          {/* Moving Player Indicator - Moves across entire compass */}
+          {/* Moving Player Indicator */}
           <div 
-            className={`absolute top-0 w-1 sm:w-2 h-full transition-all duration-100 ${
+            className={`absolute top-0 w-1 sm:w-2 h-full transition-none ${
               isAttacking ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' : 'bg-white shadow-lg shadow-white/50'
             }`}
-            style={{ left: `${compassPosition}%`, transform: 'translateX(-50%)' }}
+            style={{ 
+              left: `${compassPosition}%`, 
+              transform: 'translateX(-50%)',
+              willChange: 'left'
+            }}
           />
 
           {/* Compass Markers */}
-          <div className="absolute inset-0 flex justify-between items-center px-2">
+          <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
             {[0, 25, 50, 75, 100].map(mark => (
               <div key={mark} className="w-px h-3 sm:h-6 bg-gray-500" />
             ))}
           </div>
 
           {/* Labels for clarity */}
-          <div className="absolute bottom-0 sm:bottom-1 left-1 sm:left-2 text-xs text-gray-400">0%</div>
-          <div className="absolute bottom-0 sm:bottom-1 right-1 sm:right-2 text-xs text-gray-400">100%</div>
+          <div className="absolute bottom-0 sm:bottom-1 left-1 sm:left-2 text-xs text-gray-400 pointer-events-none">0%</div>
+          <div className="absolute bottom-0 sm:bottom-1 right-1 sm:right-2 text-xs text-gray-400 pointer-events-none">100%</div>
         </div>
         
         <div className="text-center mt-2">

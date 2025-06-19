@@ -28,8 +28,8 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
 
   useEffect(() => {
     // Generate random target zone (20% of compass width)
-    const start = Math.random() * 90; // 0-80% so the 20% zone fits
-    setTargetZone({ start, end: start + 10 });
+    const start = Math.random() * 80; // 0-80% so the 20% zone fits
+    setTargetZone({ start, end: start + 20 });
     
     // Reset position and direction
     positionRef.current = 0;

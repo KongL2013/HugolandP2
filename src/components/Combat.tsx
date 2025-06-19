@@ -55,8 +55,8 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
       const deltaTime = currentTime - lastTimeRef.current;
       lastTimeRef.current = currentTime;
 
-      // Move at consistent speed regardless of framerate (60 FPS baseline)
-      const speed = 0.08; // Adjust this value to change speed
+      // Increased speed significantly for faster movement
+      const speed = 0.4; // Increased from 0.08 to 0.4 for much faster movement
       const movement = speed * (deltaTime / 16.67); // 16.67ms = 60 FPS
 
       // Update position

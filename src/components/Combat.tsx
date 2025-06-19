@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Enemy } from '../types/game';
-import { Sword, Shield, Heart } from 'lucide-react';
+import { Sword, Shield, Heart, Brain, Clock } from 'lucide-react';
+import { TriviaQuestion, getQuestionByZone } from '../utils/triviaQuestions';
 
 interface CombatProps {
   enemy: Enemy;
@@ -15,106 +16,93 @@ interface CombatProps {
 }
 
 export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, combatLog }) => {
-  const [isAttacking, setIsAttacking] = useState(false);
-  const [compassPosition, setCompassPosition] = useState(0);
-  const [targetZone, setTargetZone] = useState({ start: 0, end: 20 });
-  const [isMoving, setIsMoving] = useState(true);
-  
-  // Use refs to track animation state
-  const animationRef = useRef<number>();
-  const positionRef = useRef(0);
-  const directionRef = useRef(1);
-  const lastTimeRef = useRef(0);
+  const [currentQuestion, setCurrentQuestion] = useState<TriviaQuestion | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(15);
+  const [showResult, setShowResult] = useState(false);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
 
+  // Generate new question when enemy changes
   useEffect(() => {
-    // Generate random target zone (20% of compass width)
-    const start = Math.random() * 80; // 0-80% so the 20% zone fits
-    setTargetZone({ start, end: start + 20 });
-    
-    // Reset position and direction
-    positionRef.current = 0;
-    directionRef.current = 1;
-    setCompassPosition(0);
+    const question = getQuestionByZone(enemy.zone);
+    setCurrentQuestion(question);
+    setSelectedAnswer(null);
+    setTimeLeft(15);
+    setShowResult(false);
+    setLastAnswerCorrect(null);
   }, [enemy]);
 
+  // Timer countdown
   useEffect(() => {
-    if (!isMoving) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      return;
-    }
+    if (!currentQuestion || isAnswering || showResult) return;
 
-    const animate = (currentTime: number) => {
-      // Initialize lastTime on first frame
-      if (lastTimeRef.current === 0) {
-        lastTimeRef.current = currentTime;
-      }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Time's up - auto submit wrong answer
+          handleAnswer(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-      // Calculate delta time for consistent movement speed
-      const deltaTime = currentTime - lastTimeRef.current;
-      lastTimeRef.current = currentTime;
+    return () => clearInterval(timer);
+  }, [currentQuestion, isAnswering, showResult]);
 
-      // Increased speed significantly for faster movement
-      const speed = 1; // Increased from 0.08 to 0.4 for much faster movement
-      const movement = speed * (deltaTime / 16.67); // 16.67ms = 60 FPS
+  const handleAnswer = (answerIndex: number | null) => {
+    if (isAnswering || !currentQuestion) return;
 
-      // Update position
-      positionRef.current += directionRef.current * movement;
-      
-      // Bounce off the edges
-      if (positionRef.current >= 100) {
-        positionRef.current = 100;
-        directionRef.current = -1;
-      } else if (positionRef.current <= 0) {
-        positionRef.current = 0;
-        directionRef.current = 1;
-      }
-      
-      // Update state
-      setCompassPosition(positionRef.current);
-      
-      // Continue animation if still moving
-      if (isMoving) {
-        animationRef.current = requestAnimationFrame(animate);
-      }
-    };
+    setIsAnswering(true);
+    setSelectedAnswer(answerIndex);
 
-    // Reset lastTime when starting animation
-    lastTimeRef.current = 0;
-    animationRef.current = requestAnimationFrame(animate);
+    const isCorrect = answerIndex === currentQuestion.correctAnswer;
+    setLastAnswerCorrect(isCorrect);
+    setShowResult(true);
 
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isMoving]);
-
-  const handleAttack = () => {
-    if (isAttacking) return;
-
-    setIsAttacking(true);
-    setIsMoving(false);
-
-    // Check if attack hits (player position is within target zone)
-    const hit = positionRef.current >= targetZone.start && positionRef.current <= targetZone.end;
-    
     setTimeout(() => {
-      onAttack(hit);
-      setIsAttacking(false);
+      onAttack(isCorrect);
       
-      // Generate new target zone for next attack
-      const start = Math.random() * 80;
-      setTargetZone({ start, end: start + 20 });
-      
-      // Reset position and restart movement
-      positionRef.current = 0;
-      directionRef.current = 1;
-      setCompassPosition(0);
-      setIsMoving(true);
-    }, 500);
+      // Generate new question for next round
+      const newQuestion = getQuestionByZone(enemy.zone);
+      setCurrentQuestion(newQuestion);
+      setSelectedAnswer(null);
+      setIsAnswering(false);
+      setTimeLeft(15);
+      setShowResult(false);
+      setLastAnswerCorrect(null);
+    }, 2000);
   };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'text-green-400';
+      case 'medium': return 'text-yellow-400';
+      case 'hard': return 'text-red-400';
+      default: return 'text-gray-400';
+    }
+  };
+
+  const getDifficultyBorder = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'border-green-400';
+      case 'medium': return 'border-yellow-400';
+      case 'hard': return 'border-red-400';
+      default: return 'border-gray-400';
+    }
+  };
+
+  if (!currentQuestion) {
+    return (
+      <div className="bg-gradient-to-br from-red-900 via-purple-900 to-black p-3 sm:p-6 rounded-lg shadow-2xl">
+        <div className="text-center py-8">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-white text-lg">Loading question...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-red-900 via-purple-900 to-black p-3 sm:p-6 rounded-lg shadow-2xl">
@@ -174,66 +162,97 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
         </div>
       </div>
 
-      {/* Combat Compass */}
+      {/* Trivia Question Section */}
       <div className="mb-4 sm:mb-6">
-        <h3 className="text-white font-semibold mb-3 text-center text-sm sm:text-base">Attack Compass</h3>
-        <div className="relative bg-gray-800 rounded-lg h-8 sm:h-12 overflow-hidden border-2 border-gray-600">
-          {/* Target Zone - Green success area */}
-          <div 
-            className="absolute top-0 h-full bg-gradient-to-r from-green-400 to-green-500 opacity-80 border-l-2 border-r-2 border-green-300"
-            style={{ 
-              left: `${targetZone.start}%`, 
-              width: '20%',
-            }}
-          />
-          
-          {/* Moving Player Indicator */}
-          <div 
-            className={`absolute top-0 w-1 sm:w-2 h-full transition-none ${
-              isAttacking ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' : 'bg-white shadow-lg shadow-white/50'
-            }`}
-            style={{ 
-              left: `${compassPosition}%`, 
-              transform: 'translateX(-50%)',
-              willChange: 'left'
-            }}
-          />
-
-          {/* Compass Markers */}
-          <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
-            {[0, 25, 50, 75, 100].map(mark => (
-              <div key={mark} className="w-px h-3 sm:h-6 bg-gray-500" />
-            ))}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+            <h3 className="text-white font-semibold text-sm sm:text-base">Knowledge Challenge</h3>
           </div>
-
-          {/* Labels for clarity */}
-          <div className="absolute bottom-0 sm:bottom-1 left-1 sm:left-2 text-xs text-gray-400 pointer-events-none">0%</div>
-          <div className="absolute bottom-0 sm:bottom-1 right-1 sm:right-2 text-xs text-gray-400 pointer-events-none">100%</div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+            <span className={`font-bold text-sm sm:text-base ${timeLeft <= 5 ? 'text-red-400' : 'text-yellow-400'}`}>
+              {timeLeft}s
+            </span>
+          </div>
         </div>
-        
-        <div className="text-center mt-2">
+
+        {/* Question Card */}
+        <div className={`bg-black/40 p-4 sm:p-6 rounded-lg border-2 ${getDifficultyBorder(currentQuestion.difficulty)} mb-4`}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs sm:text-sm text-gray-400">{currentQuestion.category}</span>
+            <span className={`text-xs sm:text-sm font-semibold ${getDifficultyColor(currentQuestion.difficulty)}`}>
+              {currentQuestion.difficulty.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-white font-semibold text-sm sm:text-lg mb-4 leading-relaxed">
+            {currentQuestion.question}
+          </p>
+
+          {/* Answer Options */}
+          <div className="grid grid-cols-1 gap-2 sm:gap-3">
+            {currentQuestion.options.map((option, index) => {
+              let buttonClass = 'bg-gray-700 hover:bg-gray-600 text-white';
+              
+              if (showResult) {
+                if (index === currentQuestion.correctAnswer) {
+                  buttonClass = 'bg-green-600 text-white';
+                } else if (index === selectedAnswer && selectedAnswer !== currentQuestion.correctAnswer) {
+                  buttonClass = 'bg-red-600 text-white';
+                } else {
+                  buttonClass = 'bg-gray-600 text-gray-400';
+                }
+              } else if (selectedAnswer === index) {
+                buttonClass = 'bg-blue-600 text-white';
+              }
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(index)}
+                  disabled={isAnswering || showResult}
+                  className={`p-2 sm:p-3 rounded-lg font-semibold transition-all duration-200 text-left text-xs sm:text-sm ${buttonClass} ${
+                    !isAnswering && !showResult ? 'hover:scale-102' : 'cursor-not-allowed'
+                  }`}
+                >
+                  <span className="font-bold mr-2">{String.fromCharCode(65 + index)}.</span>
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Result Feedback */}
+        {showResult && (
+          <div className={`text-center p-3 sm:p-4 rounded-lg ${
+            lastAnswerCorrect 
+              ? 'bg-green-900/50 border border-green-500' 
+              : 'bg-red-900/50 border border-red-500'
+          }`}>
+            <p className={`font-bold text-sm sm:text-base ${
+              lastAnswerCorrect ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {lastAnswerCorrect 
+                ? '🎉 Correct! You deal damage!' 
+                : '❌ Wrong! The enemy attacks you!'}
+            </p>
+            {!lastAnswerCorrect && (
+              <p className="text-gray-300 text-xs sm:text-sm mt-1">
+                Correct answer: {String.fromCharCode(65 + currentQuestion.correctAnswer)}. {currentQuestion.options[currentQuestion.correctAnswer]}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="text-center mt-3">
           <p className="text-xs sm:text-sm text-gray-300">
-            Hit the <span className="text-green-400 font-semibold">green zone</span> to deal damage!
+            Answer correctly to <span className="text-green-400 font-semibold">deal damage</span>!
           </p>
           <p className="text-xs text-gray-400">
-            Miss and the enemy will attack you instead.
+            Wrong answers let the enemy attack you.
           </p>
         </div>
-      </div>
-
-      {/* Attack Button */}
-      <div className="text-center mb-4 sm:mb-6">
-        <button
-          onClick={handleAttack}
-          disabled={isAttacking}
-          className={`px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold text-white transition-all duration-200 transform text-sm sm:text-base ${
-            isAttacking 
-              ? 'bg-gray-600 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 hover:scale-105 shadow-lg hover:shadow-red-500/25'
-          }`}
-        >
-          {isAttacking ? 'Attacking...' : 'ATTACK!'}
-        </button>
       </div>
 
       {/* Combat Log */}

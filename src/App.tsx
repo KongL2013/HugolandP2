@@ -4,9 +4,10 @@ import { Combat } from './components/Combat';
 import { Shop } from './components/Shop';
 import { Inventory } from './components/Inventory';
 import { PlayerStats } from './components/PlayerStats';
-import { Swords, Shield, Package, User, Play, RotateCcw } from 'lucide-react';
+import { Research } from './components/Research';
+import { Swords, Shield, Package, User, Play, RotateCcw, Brain, Crown } from 'lucide-react';
 
-type GameView = 'stats' | 'combat' | 'shop' | 'inventory';
+type GameView = 'stats' | 'combat' | 'shop' | 'inventory' | 'research';
 
 function App() {
   const {
@@ -16,6 +17,9 @@ function App() {
     equipArmor,
     upgradeWeapon,
     upgradeArmor,
+    sellWeapon,
+    sellArmor,
+    upgradeResearch,
     openChest,
     startCombat,
     attack,
@@ -75,6 +79,17 @@ function App() {
                   Visit the shop to get better equipment and try again!
                 </p>
               )}
+              {gameState.isPremium && (
+                <div className="bg-gradient-to-r from-yellow-600 to-yellow-500 p-3 rounded-lg">
+                  <div className="flex items-center justify-center gap-2">
+                    <Crown className="w-5 h-5 text-white" />
+                    <span className="text-white font-bold">🎉 PREMIUM MEMBER UNLOCKED! 🎉</span>
+                  </div>
+                  <p className="text-yellow-100 text-sm mt-1">
+                    You've reached Zone 50! Enjoy exclusive Mythical Chests and special rewards!
+                  </p>
+                </div>
+              )}
               <button
                 onClick={resetGame}
                 className="px-4 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 transition-all duration-200 flex items-center gap-2 mx-auto text-sm"
@@ -103,7 +118,7 @@ function App() {
           </div>
         );
       case 'shop':
-        return <Shop coins={gameState.coins} onOpenChest={openChest} />;
+        return <Shop coins={gameState.coins} onOpenChest={openChest} isPremium={gameState.isPremium} />;
       case 'inventory':
         return (
           <Inventory
@@ -113,6 +128,17 @@ function App() {
             onEquipArmor={equipArmor}
             onUpgradeWeapon={upgradeWeapon}
             onUpgradeArmor={upgradeArmor}
+            onSellWeapon={sellWeapon}
+            onSellArmor={sellArmor}
+          />
+        );
+      case 'research':
+        return (
+          <Research
+            research={gameState.research}
+            coins={gameState.coins}
+            onUpgradeResearch={upgradeResearch}
+            isPremium={gameState.isPremium}
           />
         );
       default:
@@ -125,15 +151,21 @@ function App() {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-800 via-violet-800 to-purple-800 shadow-2xl">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center mb-4 sm:mb-6">
-            🏰 Hugoland 🗡️
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center">
+              🏰 Hugoland 🗡️
+            </h1>
+            {gameState.isPremium && (
+              <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400 animate-pulse" />
+            )}
+          </div>
           
           {/* Navigation */}
           <nav className="flex justify-center space-x-1 sm:space-x-2 overflow-x-auto pb-2">
             {[
               { id: 'stats', label: 'Hero', icon: User },
               { id: 'combat', label: 'Combat', icon: Swords },
+              { id: 'research', label: 'Research', icon: Brain },
               { id: 'shop', label: 'Shop', icon: Package },
               { id: 'inventory', label: 'Inventory', icon: Shield },
             ].map(({ id, label, icon: Icon }) => (
@@ -166,7 +198,8 @@ function App() {
 
       {/* Footer */}
       <div className="text-center py-4 text-gray-400 text-xs sm:text-sm px-4">
-        Welcome to Hugoland - Where imagination meets adventure!
+        Welcome to Hugoland - Where knowledge meets power! 
+        {gameState.isPremium && <span className="text-yellow-400 ml-2">👑 Premium Member</span>}
       </div>
     </div>
   );

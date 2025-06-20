@@ -7,6 +7,8 @@ export interface GameState {
   currentEnemy: Enemy | null;
   inCombat: boolean;
   combatLog: string[];
+  research: Research;
+  isPremium: boolean;
 }
 
 export interface PlayerStats {
@@ -16,6 +18,13 @@ export interface PlayerStats {
   def: number;
   baseAtk: number;
   baseDef: number;
+  baseHp: number;
+}
+
+export interface Research {
+  level: number;
+  tier: number; // Every 10 levels = new tier
+  totalSpent: number;
 }
 
 export interface Inventory {
@@ -28,19 +37,23 @@ export interface Inventory {
 export interface Weapon {
   id: string;
   name: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythical';
   baseAtk: number;
   level: number;
   upgradeCost: number;
+  sellPrice: number;
+  isChroma?: boolean;
 }
 
 export interface Armor {
   id: string;
   name: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythical';
   baseDef: number;
   level: number;
   upgradeCost: number;
+  sellPrice: number;
+  isChroma?: boolean;
 }
 
 export interface Enemy {
@@ -54,6 +67,6 @@ export interface Enemy {
 
 export interface ChestReward {
   type: 'weapon' | 'armor' | 'gems';
-  item?: Weapon | Armor;
+  items?: (Weapon | Armor)[];
   gems?: number;
 }

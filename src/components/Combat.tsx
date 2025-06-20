@@ -19,7 +19,7 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
   const [currentQuestion, setCurrentQuestion] = useState<TriviaQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswering, setIsAnswering] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(5); // Reduced to 5 seconds
   const [showResult, setShowResult] = useState(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
 
@@ -28,7 +28,7 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
     const question = getQuestionByZone(enemy.zone);
     setCurrentQuestion(question);
     setSelectedAnswer(null);
-    setTimeLeft(15);
+    setTimeLeft(5); // Reduced to 5 seconds
     setShowResult(false);
     setLastAnswerCorrect(null);
   }, [enemy]);
@@ -69,7 +69,7 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
       setCurrentQuestion(newQuestion);
       setSelectedAnswer(null);
       setIsAnswering(false);
-      setTimeLeft(15);
+      setTimeLeft(5); // Reduced to 5 seconds
       setShowResult(false);
       setLastAnswerCorrect(null);
     }, 2000);
@@ -171,7 +171,7 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-            <span className={`font-bold text-sm sm:text-base ${timeLeft <= 5 ? 'text-red-400' : 'text-yellow-400'}`}>
+            <span className={`font-bold text-sm sm:text-base ${timeLeft <= 2 ? 'text-red-400 animate-pulse' : 'text-yellow-400'}`}>
               {timeLeft}s
             </span>
           </div>
@@ -249,8 +249,8 @@ export const Combat: React.FC<CombatProps> = ({ enemy, playerStats, onAttack, co
           <p className="text-xs sm:text-sm text-gray-300">
             Answer correctly to <span className="text-green-400 font-semibold">deal damage</span>!
           </p>
-          <p className="text-xs text-gray-400">
-            Wrong answers let the enemy attack you.
+          <p className="text-xs text-red-400 font-semibold">
+            ⚠️ Only 5 seconds to answer!
           </p>
         </div>
       </div>
